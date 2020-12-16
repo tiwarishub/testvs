@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: aaaatiwarishubregistry.azurecr.io
+        username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core" -f  "dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/Dockerfile" -t aaaatiwarishubregistry.azurecr.io/aatiwarishubaks8b50:${{ github.sha }}
+        docker push aaaatiwarishubregistry.azurecr.io/aatiwarishubaks8b50:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{secrets.aks_aatiwarishubaks_kubeConfig}}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep aatiwarishubaks8b50 | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace aatiwarishubaks8b50`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: aatiwarishubaks8b50
+        container-registry-url: aaaatiwarishubregistry.azurecr.io
+        container-registry-username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        container-registry-password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+        secret-name: aatiwarishubdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: aatiwarishubaks8b50
+        manifests: |
+          dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/manifests/deployment-8b50.yml
+          dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/manifests/service-8b50.yml
+        images: |
+          aaaatiwarishubregistry.azurecr.io/aatiwarishubaks8b50:${{ github.sha }}
+        imagepullsecrets: |
+          aatiwarishubdockerauth
