@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "kuvjsk-7316"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "kuvjsk-7316"
+  template:
+    metadata:
+      labels:
+        app: "kuvjsk-7316"
+    spec:
+      containers:
+        - name: "kuvjsk-7316"
+          image: "aaaatiwarishubregistry.azurecr.io/kuvjsk7316"
+          ports:
+          - containerPort: 8080
