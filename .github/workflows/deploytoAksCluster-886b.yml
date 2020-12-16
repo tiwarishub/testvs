@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: aaaatiwarishubregistry.azurecr.io
+        username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/node/sail.js/container/Application" -f  "node/sail.js/container/Application/Dockerfile" -t aaaatiwarishubregistry.azurecr.io/aatiwarishubaks886b:${{ github.sha }}
+        docker push aaaatiwarishubregistry.azurecr.io/aatiwarishubaks886b:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{secrets.aks_aatiwarishubaks_kubeConfig}}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep aatiwarishubaks886b | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace aatiwarishubaks886b`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: aatiwarishubaks886b
+        container-registry-url: aaaatiwarishubregistry.azurecr.io
+        container-registry-username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        container-registry-password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+        secret-name: aatiwarishubdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: aatiwarishubaks886b
+        manifests: |
+          node/sail.js/container/Application/manifests/deployment-886b.yml
+          node/sail.js/container/Application/manifests/service-886b.yml
+        images: |
+          aaaatiwarishubregistry.azurecr.io/aatiwarishubaks886b:${{ github.sha }}
+        imagepullsecrets: |
+          aatiwarishubdockerauth
