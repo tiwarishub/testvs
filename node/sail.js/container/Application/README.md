@@ -3,7 +3,7 @@
 | Nodejs | Sailjs | Azure Web App, Virtual Machine| |
 
 
-# Node Sailjs web application
+# Node Sailjs web application.   
 
 Sample Node Sailjs web application that you can use to deploy on Azure.
 
