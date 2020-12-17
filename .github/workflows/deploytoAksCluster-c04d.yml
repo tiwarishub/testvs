@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: aaaatiwarishubregistry.azurecr.io
+        username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core" -f  "dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/Dockerfile" -t aaaatiwarishubregistry.azurecr.io/kuvjskc04d:${{ github.sha }}
+        docker push aaaatiwarishubregistry.azurecr.io/kuvjskc04d:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{secrets.aks_kuvjsk_kubeConfig}}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep kuvjskc04d | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace kuvjskc04d`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: kuvjskc04d
+        container-registry-url: aaaatiwarishubregistry.azurecr.io
+        container-registry-username: ${{secrets.acr_aaaatiwarishubregistry_username}}
+        container-registry-password: ${{secrets.acr_aaaatiwarishubregistry_password}}
+        secret-name: kuvjskdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: kuvjskc04d
+        manifests: |
+          dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/manifests/deployment-c04d.yml
+          dotnet/aspnetcore/container/Application/aspnet-core-dotnet-core/manifests/service-c04d.yml
+        images: |
+          aaaatiwarishubregistry.azurecr.io/kuvjskc04d:${{ github.sha }}
+        imagepullsecrets: |
+          kuvjskdockerauth
