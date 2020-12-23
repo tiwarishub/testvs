@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: "aatiwarishubaks-a2ae"
+    labels:
+        app: "aatiwarishubaks-a2ae"
+spec:
+    type: LoadBalancer
+    ports:
+    - port: 808
+      targetPort: 808
+      protocol: TCP
+      name: http
+    selector:
+        app: "aatiwarishubaks-a2ae"
